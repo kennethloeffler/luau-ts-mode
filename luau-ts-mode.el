@@ -6,7 +6,6 @@
 ;; Version: 0.0.0
 ;; Keywords: luau, languages
 ;; URL: https://github.com/kennethloeffler/luau-ts-mode
-;; Package-Requires: ((emacs "29.1"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -24,9 +23,18 @@
 ;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 ;;; Commentary:
-;; This package provides a major mode for editing Luau files.
+;; This package provides `luau-ts-mode' for editing Luau files, which
+;; uses Tree Sitter to parse the language..
+;;
+;; This package is compatible with the Tree Sitter grammar for Luau
+;; found at https://github.com/4teapo/tree-sitter-luau.
+
+;;; Code:
 
 (require 'treesit)
+
+(eval-when-compile
+  (require 'rx))
 
 (add-to-list
  'treesit-language-source-alist
@@ -34,21 +42,31 @@
        :commit "0d66daa8a247fad86c19964dd2406a8646cac966")
  t)
 
-(defvar luau-ts-mode--builtin-fns
+(defgroup luau-ts nil
+  "Major mode for editing Luau files."
+  :prefix "luau-ts-"
+  :group 'languages)
+
+(defcustom luau-ts-indent-offset 4
+  "Spaces (or tab width if `indent-tabs-mode' enabled) for indentation."
+  :type 'natnum
+  :safe 'natnump)
+
+(defvar luau-ts--builtin-fns
   '("require" "assert" "error" "gcinfo" "getfenv" "getmetatable" "next"
     "newproxy" "print" "rawequal" "rawget" "select" "setfenv" "setmetatable"
     "tonumber" "tostring" "type" "typeof" "ipairs" "pairs" "pcall" "xpcall" "unpack"))
 
-(defvar luau-ts-mode--builtin-metamethods
+(defvar luau-ts--builtin-metamethods
   '("__index" "__newindex" "__call" "__concat" "__unm" "__add" "__sub" "__mul"
     "__div" "__idiv" "__mod" "__pow" "__tostring" "__metatable" "__eq" "__lt"
     "__le" "__mode" "__gc" "__len" "__iter"))
 
-(defvar luau-ts-mode--stdlib
+(defvar luau-ts--stdlib
   '("math" "table" "string" "coroutine" "bit32" "utf8" "os" "debug"
     "buffer" "vector"))
 
-(defvar luau-ts-mode--syntax-table
+(defvar luau-ts--syntax-table
   (let ((table (make-syntax-table)))
     (modify-syntax-entry ?+  "."    table)
     (modify-syntax-entry ?-  ". 12" table)
@@ -66,7 +84,7 @@
     table)
   "Syntax table for `luau-ts-mode'.")
 
-(defvar luau-ts-mode--font-lock-rules
+(defvar luau-ts--font-lock-rules
   (treesit-font-lock-rules
    :language 'luau
    :feature 'comment
@@ -109,16 +127,16 @@
    :feature 'builtin
    `((function_call name: [(identifier) @font-lock-builtin-face
                            (parenthesized_expression (identifier) @font-lock-builtin-face)]
-                    (:match ,(regexp-opt luau-ts-mode--builtin-fns 'symbols)
+                    (:match ,(regexp-opt luau-ts--builtin-fns 'symbols)
                             @font-lock-builtin-face))
      (function_call name: [(dot_index_expression field: (field_identifier) @font-lock-builtin-face)
                            (method_index_expression method: (field_identifier) @font-lock-builtin-face)]
-                    (:match ,(regexp-opt luau-ts-mode--builtin-metamethods 'symbols)
+                    (:match ,(regexp-opt luau-ts--builtin-metamethods 'symbols)
                             @font-lock-builtin-face))
      ((dot_index_expression table: (identifier) @library
                             field: (field_identifier) @font-lock-builtin-face)
-                    (:match ,(regexp-opt luau-ts-mode--stdlib 'symbols) @library))
-     ((identifier) @font-lock-builtin-face (:match ,(regexp-opt luau-ts-mode--stdlib 'symbols)
+                    (:match ,(regexp-opt luau-ts--stdlib 'symbols) @library))
+     ((identifier) @font-lock-builtin-face (:match ,(regexp-opt luau-ts--stdlib 'symbols)
                                                    @font-lock-builtin-face))
      ((identifier) @font-lock-builtin-face (:equal @font-lock-builtin-face "self"))
      (typeof_type "typeof" @font-lock-builtin-face))
@@ -143,9 +161,8 @@
      ((hash_bang_line) @font-lock-preprocessor-face)))
   "Tree-sitter font-lock settings for `luau-ts-mode'.")
 
-(defvar luau-ts-mode-indent-offset 4)
 
-(defvar luau-ts-mode--indent-rules
+(defvar luau-ts--indent-rules
   `((luau
      ((parent-is "chunk") column-0 0)
      ((node-is "end") parent-bol 0)
@@ -158,37 +175,38 @@
      ((and (node-is "elseif") (parent-is "if_statement")) parent-bol 0)
      ((parent-is "block") parent-bol 0)
      ((parent-is "table_property_list") parent-bol 0)
-     ((parent-is "type_union") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "type_intersection") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "binary_expression") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "expression_list") standalone-parent luau-ts-mode-indent-offset)
-     ((parent-is "table_property") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "function_type") parent-bol luau-ts-mode-indent-offset)
+     ((parent-is "type_union") parent-bol luau-ts-indent-offset)
+     ((parent-is "type_intersection") parent-bol luau-ts-indent-offset)
+     ((parent-is "binary_expression") parent-bol luau-ts-indent-offset)
+     ((parent-is "expression_list") standalone-parent luau-ts-indent-offset)
+     ((parent-is "table_property") parent-bol luau-ts-indent-offset)
+     ((parent-is "function_type") parent-bol luau-ts-indent-offset)
      ((parent-is "bound_type_list") parent-bol 0)
-     ((parent-is "parenthesized_expression") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "declaration") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "function_definition") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "if_else_expression") parent-bol luau-ts-mode-indent-offset)
+     ((parent-is "parenthesized_expression") parent-bol luau-ts-indent-offset)
+     ((parent-is "declaration") parent-bol luau-ts-indent-offset)
+     ((parent-is "function_definition") parent-bol luau-ts-indent-offset)
+     ((parent-is "if_else_expression") parent-bol luau-ts-indent-offset)
      ((parent-is "type_parameters") parent-bol 0)
-     ((parent-is "parameters") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "type_reference") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "arguments") parent-bol luau-ts-mode-indent-offset)
-     ((node-is "binary_expression") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "do_statement") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "else_statement") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "if_statement") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "while_statement") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "repeat_statement") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "for_statement") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "return_statement") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "table_constructor") parent-bol luau-ts-mode-indent-offset)
-     ((parent-is "table_type") parent-bol luau-ts-mode-indent-offset)))
+     ((parent-is "parameters") parent-bol luau-ts-indent-offset)
+     ((parent-is "type_reference") parent-bol luau-ts-indent-offset)
+     ((parent-is "arguments") parent-bol luau-ts-indent-offset)
+     ((node-is "binary_expression") parent-bol luau-ts-indent-offset)
+     ((parent-is "do_statement") parent-bol luau-ts-indent-offset)
+     ((parent-is "else_statement") parent-bol luau-ts-indent-offset)
+     ((parent-is "if_statement") parent-bol luau-ts-indent-offset)
+     ((parent-is "while_statement") parent-bol luau-ts-indent-offset)
+     ((parent-is "repeat_statement") parent-bol luau-ts-indent-offset)
+     ((parent-is "for_statement") parent-bol luau-ts-indent-offset)
+     ((parent-is "return_statement") parent-bol luau-ts-indent-offset)
+     ((parent-is "table_constructor") parent-bol luau-ts-indent-offset)
+     ((parent-is "table_type") parent-bol luau-ts-indent-offset)))
   "Tree-sitter indent rules for `luau-ts-mode'.")
 
 
-(defun luau-ts-mode--syntax-propertize (beg end)
-  ;; Sometimes < and > are punctuation, and sometimes they're pairs.
-  ;; We need to edit the text properties of < and > that we determine are pairs.
+(defun luau-ts--syntax-propertize (beg end)
+  "Edit the text properties between BEG and END to handle paired < and >.
+
+Sometimes < and > are punctuation, other times they're pairs."
   (goto-char beg)
   (while (re-search-forward (rx (or "<" ">")) end t)
     (when (not (string-equal (treesit-node-type (treesit-node-at (match-beginning 0))) "->"))
@@ -207,15 +225,15 @@
 (define-derived-mode luau-ts-mode prog-mode "Luau"
   "Major mode for editing Luau files, powered by tree-sitter."
   :group 'luau
-  :syntax-table luau-ts-mode--syntax-table
+  :syntax-table luau-ts--syntax-table
 
   (when (treesit-ensure-installed 'luau)
     (setq treesit-primary-parser (treesit-parser-create 'luau))
 
     (setq-local syntax-propertize-function
-                #'luau-ts-mode--syntax-propertize)
+                #'luau-ts--syntax-propertize)
 
-    (setq-local treesit-font-lock-settings luau-ts-mode--font-lock-rules)
+    (setq-local treesit-font-lock-settings luau-ts--font-lock-rules)
     (setq-local treesit-font-lock-feature-list
                 '((comment definition)
                   (keyword string)
@@ -225,8 +243,8 @@
     (setq-local comment-end "")
     (setq-local comment-start-skip (rx "--" (* (syntax whitespace))))
 
-    (setq-local treesit-simple-indent-rules luau-ts-mode--indent-rules)
-    (setq-local tab-width luau-ts-mode-indent-offset)
+    (setq-local treesit-simple-indent-rules luau-ts--indent-rules)
+    (setq-local tab-width luau-ts-indent-offset)
 
     (treesit-major-mode-setup)))
 

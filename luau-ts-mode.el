@@ -213,7 +213,7 @@ Sometimes < and > are punctuation, other times they're pairs."
      (pcase (treesit-node-type
             (treesit-node-parent
              (treesit-node-at (match-beginning 0))))
-      ((or "type_reference" "type_alias_declaration" "function_type")
+      ((or "type_reference" "type_alias_declaration" "function_type" "function_definition")
        (put-text-property (match-beginning 0)
                           (match-end 0)
                           'syntax-table

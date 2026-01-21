@@ -206,9 +206,13 @@
 
 
 (defun luau-ts--syntax-propertize (beg end)
-  "Edit the text properties between BEG and END to handle paired < and >.
+  "Apply syntax properties to special characters between BEG and END.
 
-Sometimes < and > are punctuation, other times they're pairs."
+< and > are usually punctuation when used as binary operators.  However,
+when used for generic types they are pairs.
+
+This function checks for < and > and applies the open/close parenthesis
+text property to paired < and >."
   (goto-char beg)
   (while (re-search-forward (rx (or "<" ">")) end t)
     (when (not (string-equal (treesit-node-type (treesit-node-at (match-beginning 0))) "->"))

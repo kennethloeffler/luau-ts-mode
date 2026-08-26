@@ -236,9 +236,6 @@ text property to paired < and >."
   (when (treesit-ensure-installed 'luau)
     (setq treesit-primary-parser (treesit-parser-create 'luau))
 
-    (setq-local syntax-propertize-function
-                #'luau-ts--syntax-propertize)
-
     (setq-local treesit-font-lock-settings luau-ts--font-lock-rules)
     (setq-local treesit-font-lock-feature-list
                 '((comment definition)

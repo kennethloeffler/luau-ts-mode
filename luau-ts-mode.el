@@ -48,7 +48,7 @@
   :group 'languages)
 
 (defcustom luau-ts-indent-offset 4
-  "Spaces (or tab width if `indent-tabs-mode' enabled) for indentation."
+  "Number of spaces (or tab width if `indent-tabs-mode' enabled) for indentation."
   :type 'natnum
   :safe 'natnump)
 

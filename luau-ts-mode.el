@@ -39,7 +39,7 @@
 (add-to-list
  'treesit-language-source-alist
  '(luau "https://github.com/4teapo/tree-sitter-luau"
-       :commit "0d66daa8a247fad86c19964dd2406a8646cac966")
+       :commit "5c708649dd8d26735f8d6cca022195325ea27086")
  t)
 
 (defgroup luau-ts nil

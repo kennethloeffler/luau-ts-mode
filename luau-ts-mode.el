@@ -125,14 +125,14 @@
 
    :language 'luau
    :feature 'builtin
-   `((function_call name: [(identifier) @font-lock-builtin-face
-                           (parenthesized_expression (identifier) @font-lock-builtin-face)]
-                    (:match ,(regexp-opt luau-ts--builtin-fns 'symbols)
-                            @font-lock-builtin-face))
-     (function_call name: [(dot_index_expression field: (field_identifier) @font-lock-builtin-face)
-                           (method_index_expression method: (field_identifier) @font-lock-builtin-face)]
-                    (:match ,(regexp-opt luau-ts--builtin-metamethods 'symbols)
-                            @font-lock-builtin-face))
+   `(((function_call name: [(identifier) @font-lock-builtin-face
+                            (parenthesized_expression (identifier) @font-lock-builtin-face)])
+      (:match ,(regexp-opt luau-ts--builtin-fns 'symbols)
+              @font-lock-builtin-face))
+     ((function_call name: [(dot_index_expression field: (field_identifier) @font-lock-builtin-face)
+                            (method_index_expression method: (field_identifier) @font-lock-builtin-face)])
+      (:match ,(regexp-opt luau-ts--builtin-metamethods 'symbols)
+              @font-lock-builtin-face))
      ((dot_index_expression table: (identifier) @library
                             field: (field_identifier) @font-lock-builtin-face)
                     (:match ,(regexp-opt luau-ts--stdlib 'symbols) @library))
